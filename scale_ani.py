@@ -118,10 +118,11 @@ def _ico_bytes_from_pillow(img, size):
 
 def _patch_ico_to_cur(ico_bytes: bytes, hotspot_xy):
     b = bytearray(ico_bytes)
-    b[2:4] = struct.pack('<H', 2)
+    # ICO header -> CUR header
+    b[2:4] = struct.pack('<H', 2)  # type = 2 (CUR)
     off = 6
     x, y = hotspot_xy
-    b[off+4:off+8] = struct.pack('<HH', x, y)
+    b[off+4:off+8] = struct.pack('<HH', x, y)  # hotspot
     return bytes(b)
 
 def _scale_frame_preserve_hotspot(frame_bytes: bytes, target_size=(64,64)) -> bytes:
@@ -142,35 +143,50 @@ def _scale_frame_preserve_hotspot(frame_bytes: bytes, target_size=(64,64)) -> by
     return _patch_ico_to_cur(ico, hotspot) if out_is_cur else ico
 
 # ---------------- Main ----------------
+def _process_ani(in_path: str, out_path: str, target_size):
+    with open(in_path, 'rb') as f:
+        data = f.read()
+    ani = _parse_ani(data)
+
+    ani['header']['iWidth'], ani['header']['iHeight'] = target_size
+    ani['header']['nSteps']  = len(ani['seq'])
+    ani['header']['nFrames'] = len(ani['frames'])
+
+    new_frames = [_scale_frame_preserve_hotspot(fr, target_size) for fr in ani['frames']]
+    out_data = _build_ani(ani['header'], ani['rate'], ani['seq'], new_frames, ani['extras'])
+
+    with open(out_path, 'wb') as f:
+        f.write(out_data)
+
+def _process_cur(in_path: str, out_path: str, target_size):
+    with open(in_path, 'rb') as f:
+        cur_bytes = f.read()
+    out_bytes = _scale_frame_preserve_hotspot(cur_bytes, target_size)
+    # _scale_frame_preserve_hotspot は CUR->CUR（ホットスポット維持）/ ICO->ICO を自動で返す
+    # 入力が .cur の場合は head を CUR に補正しているので、そのまま .cur として保存してOK
+    with open(out_path, 'wb') as f:
+        f.write(out_bytes)
+
 def scale_ani_folder(input_dir: str, size: int):
     target_size = (size, size)
     output_dir = input_dir.rstrip("\\/") + f"_scaled{size}"
     os.makedirs(output_dir, exist_ok=True)
 
-    ani_files = [f for f in os.listdir(input_dir) if f.lower().endswith('.ani')]
-    if not ani_files:
-        print('⚠️ .ani が見つかりませんでした。')
+    files = [f for f in os.listdir(input_dir) if f.lower().endswith(('.ani', '.cur'))]
+    if not files:
+        print('⚠️ .ani / .cur が見つかりませんでした。')
         return
 
-    for name in ani_files:
+    for name in files:
         in_path = os.path.join(input_dir, name)
         out_path = os.path.join(output_dir, name)  # ファイル名はそのまま
         try:
-            with open(in_path, 'rb') as f:
-                data = f.read()
-            ani = _parse_ani(data)
-
-            ani['header']['iWidth'], ani['header']['iHeight'] = target_size
-            ani['header']['nSteps']  = len(ani['seq'])
-            ani['header']['nFrames'] = len(ani['frames'])
-
-            new_frames = [_scale_frame_preserve_hotspot(fr, target_size) for fr in ani['frames']]
-            out_data = _build_ani(ani['header'], ani['rate'], ani['seq'], new_frames, ani['extras'])
-
-            with open(out_path, 'wb') as f:
-                f.write(out_data)
-            print(f'✅ {name} → {out_path}')
-
+            if name.lower().endswith('.ani'):
+                _process_ani(in_path, out_path, target_size)
+                print(f'✅ ANI: {name} → {out_path}')
+            elif name.lower().endswith('.cur'):
+                _process_cur(in_path, out_path, target_size)
+                print(f'✅ CUR: {name} → {out_path}')
         except Exception as e:
             print(f'❌ {name} の処理でエラー: {e}')
 
