@@ -1,6 +1,6 @@
-## 🖱️ scale_ani
+## 🖱️ scale_cursor
 
-Windows の `.ani`（アニメーションカーソル）ファイルを一括でスケーリングできる Python スクリプトです。
+Windows の `.ani`（アニメーションカーソル）および `.cur`（静止カーソル）ファイルを一括でスケーリングできる Python スクリプトです。
 高解像度（4K / 8K）環境でカーソルが小さく見える場合に、
 32×32 → 64×64 や 128×128 へ拡大できます。
 ホットスポット（クリック位置）も自動でスケーリングして保持します。
@@ -9,7 +9,7 @@ Windows の `.ani`（アニメーションカーソル）ファイルを一括�
 
 ### 🚀 特徴
 
-* `.ani` ファイルを **まとめてスケーリング**
+* `.ani` と `.cur` ファイルを **まとめてスケーリング**
 * **ホットスポット位置を正確に保持**
 * 出力先フォルダを自動生成
   （例：`MyCursor_scaled64`、`MyCursor_scaled128`）
@@ -31,44 +31,43 @@ pip install pillow
 
 ---
 
-### 🧰 使い方
+### 🧮 使い方
 
 ```bash
-python scale_ani.py "<入力フォルダ>" [サイズ]
+python scale_cursor.py "<入力フォルダ>" [サイズ]
 ```
 
 #### 例：
 
 ```bash
 # 既定（64×64）で拡大
-python scale_ani.py "C:\Users\YourName\Downloads\MyCursor"
+python scale_cursor.py "C:\Users\YourName\Downloads\MyCursor"
 
 # 128×128 に拡大
-python scale_ani.py "C:\Users\YourName\Downloads\MyCursor" 128
+python scale_cursor.py "C:\Users\YourName\Downloads\MyCursor" 128
 ```
-
 
 #### 📁 出力結果
 
-| 入力フォルダ     | 出力フォルダ               | 内容                         |
-| ---------- | -------------------- | -------------------------- |
-| `MyCursor` | `MyCursor_scaled64`  | 64×64 に拡大された `.ani` ファイル   |
-| `MyCursor` | `MyCursor_scaled128` | 128×128 に拡大された `.ani` ファイル |
+| 入力フォルダ     | 出力フォルダ               | 内容                                  |
+| ---------- | -------------------- | ----------------------------------- |
+| `MyCursor` | `MyCursor_scaled64`  | 64×64 に拡大された `.ani` / `.cur` ファイル   |
+| `MyCursor` | `MyCursor_scaled128` | 128×128 に拡大された `.ani` / `.cur` ファイル |
 
-各 `.ani` のファイル名はそのまま保持されます。
+各ファイル名はそのまま保持されます。
 出力フォルダが自動で作成され、元のフォルダは変更されません。
 
 ---
 
-### 🧩 スクリプトの概要
+### 🤖 スクリプトの概要
 
-内部的には `.ani` ファイルを RIFF 構造として解析し、
+内部的には `.ani` / `.cur` ファイルを解析し、
 中に含まれる `.ico` / `.cur` フレームを Pillow でスケーリングしています。
 
-* `.ani` → 含まれる各フレームを展開
-* `.cur` → ホットスポットを保持して拡大
+* `.ani` → RIFF 構造を解析して各フレームを拡大
+* `.cur` → ホットスポットを保持して単体で拡大
 * `.ico` → 画像のみ拡大
-* 再び `.ani` 構造として保存
+* `.ani` 構造を再構築し保存、`.cur` は単体で保存
 
 ---
 
